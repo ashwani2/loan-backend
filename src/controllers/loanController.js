@@ -5,7 +5,7 @@ const Loan = require("../models/loanModel");
 // Create Loan Query
 exports.createLoan = async (req, res) => {
   try {
-    const { fullname, phoneNumber, pincode, emailAddress, loanAmount, type } =
+    const { fullname, phoneNumber, pincode, emailAddress, loanAmount, loanType } =
       req.body;
 
     // Fetch City and State from Pincode API
@@ -22,7 +22,7 @@ exports.createLoan = async (req, res) => {
         fullname,
         phoneNumber,
         pincode,
-        type,
+        loanType,
         emailAddress,
         loanAmount,
         city,
