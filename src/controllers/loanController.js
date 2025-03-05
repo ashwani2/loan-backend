@@ -5,7 +5,7 @@ const Loan = require("../models/loanModel");
 // Create Loan Query
 exports.createLoan = async (req, res) => {
   try {
-    const { fullname, phoneNumber, pincode, emailAddress, loanAmount } =
+    const { fullname, phoneNumber, pincode, emailAddress, loanAmount, type } =
       req.body;
 
     // Fetch City and State from Pincode API
@@ -22,6 +22,7 @@ exports.createLoan = async (req, res) => {
         fullname,
         phoneNumber,
         pincode,
+        type,
         emailAddress,
         loanAmount,
         city,
@@ -45,19 +46,51 @@ exports.createLoan = async (req, res) => {
 exports.bulkInsertLoans = async (req, res) => {
   try {
     const loans = req.body.loans;
+
+    // Validate that each loan has the required fields
+    if (!Array.isArray(loans) || loans.length === 0) {
+      return res.status(400).json({ message: "Invalid loan data provided" });
+    }
+
+    const validLoanTypes = [
+      "Credit Card",
+      "Business Loan",
+      "Home Loan",
+      "Gold Loan",
+    ];
+
+    for (const loan of loans) {
+      if (
+        !loan.fullname ||
+        !loan.phoneNumber ||
+        !loan.pincode ||
+        !loan.state ||
+        !loan.city ||
+        !loan.emailAddress ||
+        !loan.loanAmount ||
+        !loan.loanType ||
+        !validLoanTypes.includes(loan.loanType)
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Invalid loan format in request data" });
+      }
+    }
+
     await Loan.insertMany(loans);
     res
       .status(201)
       .json({ message: "Bulk loan requests submitted successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error("Error in bulkInsertLoans:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 // Get Loan Queries with Pagination and Date Filtering
 exports.getLoans = async (req, res) => {
   try {
-    const { page = 1, limit = 10, from, to } = req.query;
+    const { page = 1, limit = 10, from, to, loanType } = req.query;
 
     const query = {};
 
@@ -66,6 +99,9 @@ exports.getLoans = async (req, res) => {
         $gte: new Date(from),
         $lte: new Date(new Date(to).setUTCHours(23, 59, 59, 999)), // Extend to end of day
       };
+    }
+    if (loanType) {
+      query.loanType = loanType;
     }
 
     const totalLoans = await Loan.countDocuments(query); // Count total records
@@ -87,7 +123,7 @@ exports.getLoans = async (req, res) => {
 // Export Loans as Excel
 exports.exportLoans = async (req, res) => {
   try {
-    const { from, to } = req.query;
+    const { from, to, loanType } = req.query;
 
     const query = {};
     if (from && to) {
@@ -95,6 +131,9 @@ exports.exportLoans = async (req, res) => {
         $gte: new Date(from),
         $lte: new Date(new Date(to).setUTCHours(23, 59, 59, 999)), // Extend to end of day
       };
+    }
+    if (loanType) {
+      query.loanType = loanType;
     }
 
     const loans = await Loan.find(query).lean(); // Get all loans (no pagination)
@@ -104,9 +143,10 @@ exports.exportLoans = async (req, res) => {
       "Full Name": loan.fullname,
       "Phone Number": loan.phoneNumber,
       "Email Address": loan.emailAddress,
-      "Pincode":loan.pincode,
-      "City":loan.city,
-      "State":loan.state,
+      type: loan.loanType,
+      Pincode: loan.pincode,
+      City: loan.city,
+      State: loan.state,
       "Loan Amount": loan.loanAmount,
       "Created Time": new Date(loan.createdAt).toLocaleString(),
     }));
