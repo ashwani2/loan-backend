@@ -1,19 +1,42 @@
-const Loan = require("../models/loanModel");
 const XLSX = require("xlsx");
+const axios = require("axios");
+const Loan = require("../models/loanModel");
 
 // Create Loan Query
 exports.createLoan = async (req, res) => {
   try {
-    const { fullname, phoneNumber, emailAddress, loanAmount } = req.body;
-    const newLoan = new Loan({
-      fullname,
-      phoneNumber,
-      emailAddress,
-      loanAmount,
-    });
-    await newLoan.save();
-    res.status(201).json({ message: "Loan request submitted successfully" });
+    const { fullname, phoneNumber, pincode, emailAddress, loanAmount } =
+      req.body;
+
+    // Fetch City and State from Pincode API
+    const response = await axios.get(
+      `https://api.postalpincode.in/pincode/${pincode}`
+    );
+
+    // Check if response is valid
+    if (response.data && response.data[0].Status === "Success") {
+      const { District: city, State: state } = response.data[0].PostOffice[0];
+
+      // Create new loan request with city and state
+      const newLoan = new Loan({
+        fullname,
+        phoneNumber,
+        pincode,
+        emailAddress,
+        loanAmount,
+        city,
+        state,
+      });
+
+      await newLoan.save();
+      res
+        .status(201)
+        .json({ message: "Loan request submitted successfully", city, state });
+    } else {
+      res.status(400).json({ message: "Invalid Pincode" });
+    }
   } catch (error) {
+    console.error("Error fetching city/state:", error.message);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -40,8 +63,8 @@ exports.getLoans = async (req, res) => {
 
     if (from && to) {
       query.createdAt = {
-        $gte: new Date(from), 
-        $lte: new Date(new Date(to).setUTCHours(23, 59, 59, 999)) // Extend to end of day
+        $gte: new Date(from),
+        $lte: new Date(new Date(to).setUTCHours(23, 59, 59, 999)), // Extend to end of day
       };
     }
 
@@ -67,10 +90,10 @@ exports.exportLoans = async (req, res) => {
     const { from, to } = req.query;
 
     const query = {};
-     if (from && to) {
+    if (from && to) {
       query.createdAt = {
-        $gte: new Date(from), 
-        $lte: new Date(new Date(to).setUTCHours(23, 59, 59, 999)) // Extend to end of day
+        $gte: new Date(from),
+        $lte: new Date(new Date(to).setUTCHours(23, 59, 59, 999)), // Extend to end of day
       };
     }
 
@@ -81,8 +104,11 @@ exports.exportLoans = async (req, res) => {
       "Full Name": loan.fullname,
       "Phone Number": loan.phoneNumber,
       "Email Address": loan.emailAddress,
+      "Pincode":loan.pincode,
+      "City":loan.city,
+      "State":loan.state,
       "Loan Amount": loan.loanAmount,
-      "Created At": new Date(loan.createdAt).toLocaleString(),
+      "Created Time": new Date(loan.createdAt).toLocaleString(),
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(formattedLoans);
