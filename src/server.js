@@ -16,6 +16,7 @@ const corsOptions = {
     const allowedOrigins = [
       "http://localhost:5173",
       "https://fastficonnect.com",
+      "https://www.fastficonnect.com",
       // Add other environments as needed
     ];
 
