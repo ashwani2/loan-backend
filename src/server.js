@@ -8,7 +8,7 @@ connectDB(); // Connect to MongoDB
 
 // CORS Configuration
 app.use(cors({
-    origin: "http://localhost:5174", // Allow requests from your frontend
+    origin: "http://localhost:5173", // Allow requests from your frontend
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"]
   }));
@@ -16,6 +16,9 @@ app.use(cors({
 app.use(express.json()); // Middleware for JSON parsing
 
 // Routes
+app.use("/healthCheck", (req, res) => {
+    res.status(200).json({ message: "Server is running!" });
+});
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/loans", require("./routes/loanRoutes"));
 
