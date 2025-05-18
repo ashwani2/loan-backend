@@ -7,12 +7,12 @@ const LoanSchema = new mongoose.Schema(
     pincode: { type: Number, required: true },
     state: { type: String, required: true },
     city: { type: String, required: true },
-    emailAddress: { type: String, required: true, unique: true },
+    emailAddress: { type: String, required: true },
     loanAmount: { type: Number, required: true },
     loanType: { 
       type: String, 
       required: true,
-      enum: ["Credit Card", "Business Loan", "Home Loan", "Gold Loan"] 
+      enum: ["Credit Card", "Business Loan", "Home Loan", "Gold Loan","Digital Personal Loan"] 
     },
   },
   { timestamps: true }
