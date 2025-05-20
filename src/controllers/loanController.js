@@ -1,20 +1,37 @@
 const XLSX = require("xlsx");
 const axios = require("axios");
+const https = require("https");
 const Loan = require("../models/loanModel");
 
+// Create an HTTPS agent that disables SSL certificate validation
+const agent = new https.Agent({
+  rejectUnauthorized: false, // ⚠️ Disables SSL cert validation (TEMPORARY ONLY)
+});
 // Create Loan Query
+
 exports.createLoan = async (req, res) => {
   try {
-    const { fullname, phoneNumber, pincode, emailAddress, loanAmount, loanType } =
-      req.body;
+    const {
+      fullname,
+      phoneNumber,
+      pincode,
+      emailAddress,
+      loanAmount,
+      loanType,
+    } = req.body;
 
     // Fetch City and State from Pincode API
     const response = await axios.get(
-      `https://api.postalpincode.in/pincode/${pincode}`
+      `https://api.postalpincode.in/pincode/${pincode}`,
+      { httpsAgent: agent } // Use the custom agent here
     );
 
     // Check if response is valid
-    if (response.data && response.data[0].Status === "Success") {
+    if (
+      response.data &&
+      Array.isArray(response.data) &&
+      response.data[0].Status === "Success"
+    ) {
       const { District: city, State: state } = response.data[0].PostOffice[0];
 
       // Create new loan request with city and state
@@ -30,9 +47,12 @@ exports.createLoan = async (req, res) => {
       });
 
       await newLoan.save();
-      res
-        .status(201)
-        .json({ message: "Loan request submitted successfully", city, state });
+
+      res.status(201).json({
+        message: "Loan request submitted successfully",
+        city,
+        state,
+      });
     } else {
       res.status(400).json({ message: "Invalid Pincode" });
     }
@@ -41,6 +61,7 @@ exports.createLoan = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // Bulk Insert Loans
 exports.bulkInsertLoans = async (req, res) => {
